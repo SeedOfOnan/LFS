@@ -1,0 +1,172 @@
+export LFS=/tmp/lfs/ #NOTE trailing '/'
+export LFSVER=r11.2-215
+export LFSHOWTO=~/Documents/LFS-HowTo/x86_64-$LFSVER
+
+# Build on a RAM disk
+mkdir $LFS
+sudo mount -t tmpfs -o size=25G tmp-lfs $LFS
+cd $LFS
+sudo tar -xpf $LFSHOWTO/lfs-system-$LFSVER.tar.xz
+
+cp -r $LFSHOWTO/bsources $LFS
+
+sudo mount -v --bind /dev "$LFS"dev
+sudo mount -v --bind /dev/pts "$LFS"dev/pts
+sudo mount -vt proc proc "$LFS"proc
+sudo mount -vt sysfs sysfs "$LFS"sys
+sudo mount -vt tmpfs tmpfs "$LFS"run
+if [ -h "$LFS"dev/shm ]; then
+  sudo mkdir -pv "$LFS"$(readlink "$LFS"dev/shm)
+else
+  sudo mount -vt tmpfs -o nosuid,nodev tmpfs "$LFS"dev/shm
+fi
+
+sudo chroot "$LFS" /usr/bin/env -i  \
+    HOME=/root                  \
+    TERM="$TERM"                \
+    PS1='(lfs chroot) \u:\w\$ ' \
+    PATH=/usr/bin:/usr/sbin     \
+    MAKEFLAGS="-j$(nproc)"      \
+    /bin/bash --login
+
+cd /bsources
+
+tar -xf MarkupSafe-2.1.1.tar.gz
+cd MarkupSafe-2.1.1
+pip3 wheel -w dist --no-build-isolation --no-deps $PWD
+pip3 install --no-index --find-links dist --no-cache-dir --no-user markupsafe
+cd ..
+rm -r MarkupSafe-2.1.1
+
+tar -xf Mako-1.2.3.tar.gz
+cd Mako-1.2.3
+pip3 wheel -w dist --no-build-isolation --no-deps $PWD
+pip3 install --no-index --find-links dist --no-cache-dir --no-user Mako
+cd ..
+rm -r Mako-1.2.3
+
+tar -xf libpciaccess-libpciaccess-0.17.tar.gz
+cd libpciaccess-libpciaccess-0.17
+meson build/ -Dprefix=/usr --buildtype=release
+ninja -C build/
+ninja -C build/ install
+cd ..
+rm -r libpciaccess-libpciaccess-0.17
+
+tar -xf libdrm-2.4.114.tar.xz
+cd libdrm-2.4.114
+PKG_CONFIG_PATH=/usr/local/lib/pkgconfig meson build/ -Dprefix=/usr --buildtype=release -Dvalgrind=disabled -Dudev=false -Dtests=true -Dinstall-test-programs=false -Dradeon=disabled -Damdgpu=disabled -Dvmwgfx=disabled -Dintel=enabled
+ninja -C build/
+ninja -C build/ install
+cd ..
+rm -r libdrm-2.4.114
+
+tar -xf mesa-22.3.0-rc2.tar.xz
+cd mesa-22.3.0-rc2
+PKG_CONFIG_PATH=/usr/local/lib/pkgconfig meson build/ -Dprefix=/usr --buildtype=release -Degl-native-platform=drm -Dplatforms=[] -Dgallium-drivers=iris,nouveau -Dvulkan-drivers=[] -Ddri3=enabled -Dopengl=true -Dshared-glapi=true -Dgles1=enabled -Dgles2=enabled -Dglx=disabled -Dvalgrind=disabled -Dlibunwind=disabled -Dbuild-tests=true -Dbuild-aco-tests=false -Dlmsensors=disabled
+ninja -C build/
+ninja -C build/ install
+cd ..
+rm -r mesa-22.3.0-rc2
+
+tar -xf libxml2-2.10.3.tar.xz
+cd libxml2-2.10.3
+./configure --prefix=/usr           \
+            --sysconfdir=/etc       \
+            --disable-static        \
+            --with-history          \
+            PYTHON=/usr/bin/python3 \
+            --docdir=/usr/share/doc/libxml2-2.10.3
+make
+make install
+cd ..
+rm -r libxml2-2.10.3
+
+tar -xf libxkbcommon-1.4.1.tar.xz
+cd libxkbcommon-1.4.1
+PKG_CONFIG_PATH=/usr/local/lib/pkgconfig meson setup build -Dprefix=/usr -Denable-x11=false -Denable-wayland=false -Denable-docs=false
+ninja -C build
+ninja -C build install
+cd ..
+rm -r libxkbcommon-1.4.1
+
+tar -xf git-2.38.1.tar.xz
+cd git-2.38.1
+./configure --prefix=/usr \
+            --with-gitconfig=/etc/gitconfig \
+            --with-python=python3
+make
+make perllibdir=/usr/lib/perl5/5.36/site_perl install
+cd ..
+rm -r git-2.38.1
+
+tar -xf cmake-3.24.3.tar.gz
+cd cmake-3.24.3
+sed -i '/"lib64"/s/64//' Modules/GNUInstallDirs.cmake
+./bootstrap --prefix=/usr        \
+            --system-libs        \
+            --mandir=/share/man  \
+            --no-system-jsoncpp  \
+            --no-system-librhash \
+            --no-system-curl     \
+            --no-system-libarchive  \
+            --no-system-libuv    \
+            --no-system-nghttp2  \
+            --docdir=/share/doc/cmake-3.24.3
+make
+LC_ALL=en_US.UTF-8 bin/ctest -j$(nproc) -O cmake-3.24.3-test.log
+make install
+cd ..
+rm -r cmake-3.24.3
+
+tar -xf sqlite-autoconf-3390400.tar.gz
+cd sqlite-autoconf-3390400
+./configure --prefix=/usr     \
+            --disable-static  \
+            --enable-fts5     \
+            CPPFLAGS="-DSQLITE_ENABLE_FTS3=1            \
+                      -DSQLITE_ENABLE_FTS4=1            \
+                      -DSQLITE_ENABLE_COLUMN_METADATA=1 \
+                      -DSQLITE_ENABLE_UNLOCK_NOTIFY=1   \
+                      -DSQLITE_ENABLE_DBSTAT_VTAB=1     \
+                      -DSQLITE_SECURE_DELETE=1          \
+                      -DSQLITE_ENABLE_FTS3_TOKENIZER=1"
+make
+make install
+cd ..
+rm -r sqlite-autoconf-3390400
+
+tar -xf freetype-2.12.1.tar.xz
+cd freetype-2.12.1
+sed -ri "s:.*(AUX_MODULES.*valid):\1:" modules.cfg
+
+sed -r "s:.*(#.*SUBPIXEL_RENDERING) .*:\1:" \
+    -i include/freetype/config/ftoption.h
+
+./configure --prefix=/usr --enable-freetype-config --disable-static
+make
+make install
+cd ..
+rm -r freetype-2.12.1
+
+tar -xf openal-soft-1.22.2.tar.bz2
+cd openal-soft-1.22.2/build
+cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr ..
+make
+make install
+cd ../..
+rm -r openal-soft-1.22.2
+
+tar -xf arcan-master.zip
+cd arcan-master
+mkdir build
+cd build
+#OPENGL_LIBRARIES=/usr/local/lib OPENGL_gl_LIBRARY=/usr/local/lib OPENGL_glx_LIBRARY=/usr/local/lib CXX=gcc
+cmake -DAGP_PLATFORM=gles3 -DVIDEO_PLATFORM=egl-dri -DDISABLE_JIT=On -DBUILTIN_LUA=On ../src
+cd ../..
+
+exit
+mountpoint -q "$LFS"dev/shm && sudo umount -v "$LFS"dev/shm
+sudo umount -v "$LFS"dev/pts
+sudo umount -v "$LFS"{sys,proc,run,dev}
+

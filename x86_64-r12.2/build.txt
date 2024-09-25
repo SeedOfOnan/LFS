@@ -1,0 +1,410 @@
+# == Instructions from LFS 12.2 ==
+
+# For Ubuntu 24-04.? minimal install:
+#apt install g++ bison gawk make texinfo
+# Also ensure that (from Important note just before Chapter 5):
+# - bash is the shell in use.
+# - sh is a symbolic link to bash.
+# - /usr/bin/awk is a symbolic link to gawk.
+# - /usr/bin/yacc is a symbolic link to bison, or to a small script that executes bison.
+
+export LFS=/tmp/lfs/ #NOTE trailing '/'
+export XCC=tools
+export LFS_TGT=$(uname -m)-lfs-linux-gnu
+
+# ====
+# 2.7. Mounting the New Partition
+# ====
+# Build on a RAM disk if possible. This prevents testing the Attr-2.5.2 package in 8.24, but otherwise seems fine.
+mkdir $LFS
+sudo mount -t tmpfs -o size=25G tmp-lfs $LFS
+# Put a copy of needed files where (f)chroot environment can access them.
+mkdir "$LFS"howto
+cp ~/somewhere/wget-list "$LFS"howto
+cp ~/somewhere/md5sums "$LFS"howto
+cp ~/somewhere/chapter*.sh "$LFS"howto
+chmod -v +x "$LFS"howto/chapter*.sh
+
+# ====
+# 3.1. Introduction
+# ====
+# Download the source code and check their hash codes
+
+mkdir "$LFS"sources
+cd "$LFS"sources
+wget --input-file=../howto/wget-list --continue
+md5sum -c ../howto/md5sums
+cd ~
+sudo chown -v lfs:lfs "$LFS"sources
+
+# ====
+# 4.3. Adding the LFS User
+# ====
+# A low-privilege account with a suitably hygenic environment is created.
+
+sudo groupadd lfs
+sudo useradd -s /bin/bash -g lfs -m -k /dev/null lfs
+sudo passwd lfs #use p..9
+
+cat > "$LFS"howto/.bash_profile << "EOF"
+exec env -i HOME=$HOME TERM=$TERM PS1='\u:\w\$ ' /bin/bash
+EOF
+
+echo LFS=${LFS%/} > "$LFS"howto/.bashrc
+echo XCC=$XCC >> "$LFS"howto/.bashrc
+echo LFS_TGT=$LFS_TGT >> "$LFS"howto/.bashrc
+
+cat >> "$LFS"howto/.bashrc << "EOF"
+set +h #turns off bash's hash function
+umask 022 #anyone can read but only this user can modify
+LC_ALL=POSIX
+PATH=/usr/bin
+if [ ! -L /bin ]; then PATH=/bin:$PATH; fi
+PATH=$LFS/$XCC/bin:$PATH
+CONFIG_SITE=$LFS/usr/share/config.site
+MAKEFLAGS="-j$(nproc) -l$(nproc)"
+export LFS LC_ALL LFS_TGT PATH CONFIG_SITE XCC MAKEFLAGS
+EOF
+
+sudo mv "$LFS"howto/.bash_profile /home/lfs
+sudo mv "$LFS"howto/.bashrc /home/lfs
+sudo chown -v lfs:lfs /home/lfs/.bash_profile
+sudo chown -v lfs:lfs /home/lfs/.bashrc
+
+# ==========
+# Chapter 5. Compiling a Cross-Toolchain (and initial kernel headers & glibc)
+# ==========
+# The LFS recipe first creates a cross gcc toolchain (cross-compiler) and installs it into {{c|$LFS/$XCC}}. Then it installs the kernel headers into {{c|"$LFS"usr}}. Finally, this cross-compiler is used to build the initial glibc & libstdc++. These get re-done later in Chapter 8, as indicated in square brackets.
+#
+# 5.2. Binutils-2.43.1 - Pass 1
+# 5.3. GCC-14.2.0 - Pass 1
+# 5.4. Linux-6.10.5 API Headers
+# 5.5.[8.5] Glibc-2.40
+# 5.6.[8.29] Libstdc++ from GCC-14.2.0, Pass 1
+
+# Don't forget to undo this (below, just before Chapter 7)
+[ ! -e /etc/bash.bashrc ] || sudo mv -v /etc/bash.bashrc /etc/bash.bashrc.NOUSE
+
+su - lfs
+
+$LFS/howto/chapter5.sh > $LFS/sources/chapter5.log 2>&1
+
+# ==========
+# Chapter 6. Cross Compiling Temporary Tools
+# ==========
+# Then in Chapter 6 the cross-compiler is used to create the rest of what the target needs to (f)chroot and build all the LFS packages. Note that everything built by the cross-compiler gets re-compiled and replaced in Chapter 8, as indicated in square brackets.
+#
+# 6.2.[8.13] M4-1.4.19
+# 6.3.[8.30] Ncurses-6.5
+# 6.4.[8.36] Bash-5.2.32
+# 6.5.[8.58] Coreutils-9.5
+# 6.6.[8.60] Diffutils-3.10
+# 6.7.[8.11] File-5.45
+# 6.8.[8.62] Findutils-4.10.0
+# 6.9.[8.61] Gawk-5.3.0
+# 6.10.[8.35] Grep-3.11
+# 6.11.[8.65] Gzip-1.13
+# 6.12.[8.69] Make-4.4.1
+# 6.13.[8.70] Patch-2.7.6
+# 6.14.[8.31] Sed-4.9
+# 6.15.[8.71] Tar-1.35
+# 6.16.[8.8] Xz-5.6.2
+# 6.17.[8.20] Binutils-2.43.1 - Pass 2
+# 6.18.[GMP:8.21 MPFR:8.22 MPC:8.23 GCC:8.29] GCC-14.2.0 - Pass 2
+
+$LFS/howto/chapter6.sh > $LFS/sources/chapter6.log 2>&1
+
+# At this point, the cross-compiler folder {{f|$LFS/$XCC}} can be deleted. Then we (f)chroot into the new environment where there's no way to execute anything other than what was built above.
+
+cd $LFS
+tar -cJpf $LFS/sources/$XCC.tar.xz $XCC
+rm -r $LFS/$XCC
+
+exit
+
+[ ! -e /etc/bash.bashrc.NOUSE ] || sudo mv -v /etc/bash.bashrc.NOUSE /etc/bash.bashrc
+
+# ==========
+# Chapter 7. Entering Chroot and Building Additional Temporary Tools
+# ==========
+
+# 7.2. Changing Ownership
+sudo chown --from lfs -R root:root "$LFS"{usr,lib,var,etc,bin,sbin}
+sudo chown --from lfs -R root:root "$LFS"lib64 #x86_64
+# 7.3. Preparing Virtual Kernel File Systems
+sudo mkdir -pv "$LFS"{dev,proc,sys,run}
+# 7.3.1. Mounting and Populating /dev
+sudo mount -v --bind /dev "$LFS"dev #unnecessary if using fchroot
+# 7.3.2. Mounting Virtual Kernel File Systems
+sudo mount -vt devpts devpts -o gid=5,mode=0620 "$LFS"dev/pts #unnecessary if using fchroot
+sudo mount -vt proc proc "$LFS"proc #unnecessary if using fchroot
+sudo mount -vt sysfs sysfs "$LFS"sys #unnecessary if using fchroot
+sudo mount -vt tmpfs tmpfs "$LFS"run
+if [ -h "$LFS"dev/shm ]; then
+  SHM=$(realpath /dev/shm) # Leading slash needs to be stripped off
+  sudo install -v -d -m 1777 "$LFS"${SHM/\//}
+else
+  sudo mount -vt tmpfs -o nosuid,nodev tmpfs "$LFS"dev/shm
+fi
+# 7.4. Entering the Chroot Environment
+sudo chroot "$LFS" /usr/bin/env -i  \
+    HOME=/root                  \
+    TERM="$TERM"                \
+    PS1='(lfs chroot) \u:\w\$ ' \
+    PATH=/usr/bin:/usr/sbin     \
+    LFS_TGT="$LFS_TGT"          \
+    MAKEFLAGS="-j$(nproc)"      \
+    /bin/bash --login
+
+# First, some additional folders, links, and files are stubbed out.
+cd /sources
+../howto/chapter7a.sh > ../sources/chapter7a.log 2>&1
+
+##########################
+# Replace the running bash
+# Note: can't copy/paste past here
+exec /usr/bin/bash --login
+##########################
+
+# The remaining packages of Chapter 7 are not compiled using the cross-compiler, but they will still be re-built in Chapter 8.
+#
+# 7.7.[8.33] Gettext-0.22.5
+# 7.8.[8.34] Bison-3.8.2
+# 7.9.[8.43] Perl-5.40.0
+# 7.10.[8.52] Python-3.12.5
+# 7.11.[8.72] Texinfo-7.1
+# 7.12.[8.79] Util-linux-2.40.2
+
+cd /sources
+../howto/chapter7b.sh > ../sources/chapter7b.log 2>&1
+
+# 7.13.1. Cleaning
+rm -rf /usr/share/{info,man,doc}/*
+find /usr/{lib,libexec} -name \*.la -delete
+
+# ==========
+# Chapter 8. Installing Basic System Software (re-build everything and test)
+# ==========
+# In Chapter 8 LFS packages are tested before installing them. Note that the final cross-compiled package isn't replaced until 8.79, nearly at the end and only right after other important tools like make and patch.
+#
+# 8.3. Man-pages-6.9.1
+# 8.4. Iana-Etc-20240806
+# 8.5. Glibc-2.40
+# 8.6. Zlib-1.3.1
+# 8.7. Bzip2-1.0.8
+# 8.8. Xz-5.6.2
+# 8.9. Lz4-1.10.0
+# 8.10. Zstd-1.5.6
+# 8.11. File-5.45
+# 8.12. Readline-8.2.13
+# 8.13. M4-1.4.19
+# 8.14. Bc-6.7.6
+# 8.15. Flex-2.6.4
+# 8.16. Tcl-8.6.14
+# 8.17. Expect-5.45.4
+# 8.18. DejaGNU-1.6.3
+# 8.19. Pkgconf-2.3.0
+# 8.20. Binutils-2.43.1 - Pass 3
+# 8.21. GMP-6.2.1
+# 8.22. MPFR-4.1.1
+# 8.23. MPC-1.3.1
+# 8.24. Attr-2.5.2
+# 8.25. Acl-2.3.2
+# 8.26. Libcap-2.70
+# 8.27. Libxcrypt-4.4.36
+# 8.28. Shadow-4.16.0
+# 8.29. GCC-14.2.0
+# 8.30. Ncurses-6.5
+# 8.31. Sed-4.9
+# 8.32. Psmisc-23.7
+# 8.33. Gettext-0.22.5
+# 8.34. Bison-3.8.2
+# 8.35. Grep-3.11
+# 8.36. Bash-5.2.32
+# 8.37. Libtool-2.4.7
+# 8.38. GDBM-1.24
+# 8.39. Gperf-3.1
+# 8.40. Expat-2.6.2
+# 8.41. Inetutils-2.5
+# 8.42. Less-661
+# 8.43. Perl-5.40.0
+# 8.44. XML::Parser-2.47
+# 8.45. Intltool-0.51.0
+# 8.46. Autoconf-2.72
+# 8.47. Automake-1.17
+# 8.48. OpenSSL-3.3.1
+# 8.49. Kmod-33
+# 8.50. Libelf from Elfutils-0.191
+# 8.51. Libffi-3.4.6
+# 8.52. Python-3.12.5
+# 8.53. Flit-Core-3.9.0
+# 8.54. Wheel-0.44.0
+# 8.55. Setuptools-72.2.0
+# 8.56. Ninja-1.12.1
+# 8.57. Meson-1.5.1
+# 8.58. Coreutils-9.5
+# 8.59. Check-0.15.2
+# 8.60. Diffutils-3.10
+# 8.61. Gawk-5.3.0
+# 8.62. Findutils-4.10.0
+# 8.63. Groff-1.23.0
+# 8.64. GRUB-2.12
+# 8.65. Gzip-1.13
+# 8.66. IPRoute2-6.10.0
+# 8.67. Kbd-2.6.4
+# 8.68. Libpipeline-1.5.7
+# 8.69. Make-4.4.1
+# 8.70. Patch-2.7.6
+# 8.71. Tar-1.35
+# 8.72. Texinfo-7.1
+# 8.73. Vim-9.1.0660
+# 8.74. MarkupSafe-2.1.5
+# 8.75. Jinja2-3.1.4
+# 8.76. Udev from Systemd-256.4
+# 8.77. Man-DB-2.12.1
+# 8.78. Procps-ng-4.0.4
+# 8.79. Util-linux-2.40.2
+# 8.80. E2fsprogs-1.47.1
+# 8.81. Sysklogd-2.6.1
+# 8.82. Sysvinit-3.10
+
+../howto/chapter8a.sh > ../sources/chapter8a.log 2>&1
+# == Verify Glibc-2.40 test results ==
+#(look in log file)
+
+# Before 8.17.1 Installation of Expect: Verify that the PTYs are working
+python3 -c 'from pty import spawn; spawn(["echo", "ok"])'
+
+../howto/chapter8b.sh > ../sources/chapter8b.log 2>&1
+# WIERD: something leaks "via send_tty" back out to terminal window(?!)
+# == Verify Binutils-2.43.1 test results ==
+cd binutils-2.43.1/build
+grep '^FAIL:' $(find -name '*.log')
+cd ../..
+
+../howto/chapter8c.sh > ../sources/chapter8c.log 2>&1
+# == Verify GCC-14.2.0 test results ==
+cd gcc-14.2.0/build
+../contrib/test_summary
+cd ../..
+
+##########################
+# Finish configuration of Shadow-4.16 in 8.28.
+# Note: can't copy/paste past here -- requires interactivity
+passwd root #use blank -- a password of zero length
+##########################
+
+../howto/chapter8d.sh > ../sources/chapter8d.log 2>&1
+# == Test interactively & Verify Bash-5.2.32 ==
+cd bash-5.2.32
+su -s /usr/bin/expect tester << "EOF"
+set timeout -1
+spawn make tests
+expect eof
+lassign [wait] _ _ _ value
+exit $value
+EOF
+
+make install >> ../chapter8d.log 2>&1
+#exec /usr/bin/bash --login #moved 3-lines down
+cd ..
+rm -r bash-5.2.32
+
+##########################
+# Replace the running bash
+# Note: can't copy/paste past here
+exec /usr/bin/bash --login
+##########################
+
+../howto/chapter8e.sh > ../sources/chapter8e.log 2>&1
+# == Verify Libtool-2.4.7 test results ==
+#(look in log file)
+
+../howto/chapter8f.sh > ../sources/chapter8f.log 2>&1
+
+# =====
+# 8.78. Stripping
+# =====
+save_usrlib="$(cd /usr/lib; ls ld-linux*[^g])
+             libc.so.6
+             libthread_db.so.1
+             libquadmath.so.0.0.0
+             libstdc++.so.6.0.33
+             libitm.so.1.0.0
+             libatomic.so.1.2.0"
+
+cd /usr/lib
+
+for LIB in $save_usrlib; do
+    objcopy --only-keep-debug --compress-debug-sections=zlib $LIB $LIB.dbg
+    cp $LIB /tmp/$LIB
+    strip --strip-unneeded /tmp/$LIB
+    objcopy --add-gnu-debuglink=$LIB.dbg /tmp/$LIB
+    install -vm755 /tmp/$LIB /usr/lib
+    rm /tmp/$LIB
+done
+
+online_usrbin="bash find strip"
+online_usrlib="libbfd-2.43.1.so
+               libsframe.so.1.0.0
+               libhistory.so.8.2
+               libncursesw.so.6.5
+               libm.so.6
+               libreadline.so.8.2
+               libz.so.1.3.1
+               libzstd.so.1.5.6
+               $(cd /usr/lib; find libnss*.so* -type f)"
+
+for BIN in $online_usrbin; do
+    cp /usr/bin/$BIN /tmp/$BIN
+    strip --strip-unneeded /tmp/$BIN
+    install -vm755 /tmp/$BIN /usr/bin
+    rm /tmp/$BIN
+done
+
+for LIB in $online_usrlib; do
+    cp /usr/lib/$LIB /tmp/$LIB
+    strip --strip-unneeded /tmp/$LIB
+    install -vm755 /tmp/$LIB /usr/lib
+    rm /tmp/$LIB
+done
+
+for i in $(find /usr/lib -type f -name \*.so* ! -name \*dbg) \
+         $(find /usr/lib -type f -name \*.a)                 \
+         $(find /usr/{bin,sbin,libexec} -type f); do
+    case "$online_usrbin $online_usrlib $save_usrlib" in
+        *$(basename $i)* )
+            ;;
+        * ) strip --strip-unneeded $i
+            ;;
+    esac
+done
+
+unset BIN LIB save_usrlib online_usrbin online_usrlib
+cd ../..
+
+# =====
+# 8.79. Cleaning Up
+# =====
+rm -rf /tmp/{*,.*}
+find /usr/lib /usr/libexec -name \*.la -delete
+# Moved into 8.39 GCC (start of chapter8d.sh) the removal of compiler built in Chapter 6 and Chapter 7
+userdel -r tester
+
+exit
+
+mountpoint -q "$LFS"dev/shm && sudo umount -v "$LFS"dev/shm
+sudo umount -v "$LFS"dev/pts #unnecessary if using fchroot
+sudo umount -v "$LFS"dev #unnecessary if using fchroot
+sudo umount -v "$LFS"proc #unnecessary if using fchroot
+sudo umount -v "$LFS"sys #unnecessary if using fchroot
+sudo umount -v "$LFS"run
+sudo chown -v $USER: "$LFS"sources/*.log
+sudo chown -v $USER: "$LFS"sources/$XCC.tar.xz
+sudo chown -v $USER: "$LFS"sources
+mv "$LFS"sources/*.log ~/somewhere
+mv "$LFS"sources/$XCC.tar.xz ~/somewhere
+rm -r "$LFS"sources
+rm -r "$LFS"howto
+cd $LFS
+sudo tar -cJpf ~somewhere/toolchain.tar.xz .

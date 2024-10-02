@@ -1,4 +1,5 @@
 #!/bin/bash
+if [ "$(whoami)" != "lfs" ]; then exit 1; fi
 if [ -z ${LFS+x} ]; then exit 1; fi
 if [ -z ${XCC+x} ]; then exit 1; fi
 if [ -z ${LFS_TGT+x} ]; then exit 1; fi

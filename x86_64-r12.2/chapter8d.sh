@@ -3,7 +3,7 @@ set -e
 set -o pipefail
 set -u
 set -x
-cd gcc-12.2.0/build
+cd gcc-14.2.0/build
 
 make install
 

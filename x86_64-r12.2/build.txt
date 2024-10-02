@@ -8,6 +8,9 @@
 # - /usr/bin/awk is a symbolic link to gawk.
 # - /usr/bin/yacc is a symbolic link to bison, or to a small script that executes bison.
 
+export LFSARCH=x86_64
+export LFSVER=r12.2
+export LFSHOWTO=Documents/LFS-HowTo
 export LFS=/tmp/lfs/ #NOTE trailing '/'
 export XCC=tools
 export LFS_TGT=$(uname -m)-lfs-linux-gnu
@@ -20,9 +23,9 @@ mkdir $LFS
 sudo mount -t tmpfs -o size=25G tmp-lfs $LFS
 # Put a copy of needed files where (f)chroot environment can access them.
 mkdir "$LFS"howto
-cp ~/somewhere/wget-list "$LFS"howto
-cp ~/somewhere/md5sums "$LFS"howto
-cp ~/somewhere/chapter*.sh "$LFS"howto
+cp ~/$LFSHOWTO/$LFSARCH-$LFSVER/wget-list "$LFS"howto
+cp ~/$LFSHOWTO/$LFSARCH-$LFSVER/md5sums "$LFS"howto
+cp ~/$LFSHOWTO/$LFSARCH-$LFSVER/chapter*.sh "$LFS"howto
 chmod -v +x "$LFS"howto/chapter*.sh
 
 # ====
@@ -35,7 +38,6 @@ cd "$LFS"sources
 wget --input-file=../howto/wget-list --continue
 md5sum -c ../howto/md5sums
 cd ~
-sudo chown -v lfs:lfs "$LFS"sources
 
 # ====
 # 4.3. Adding the LFS User
@@ -84,6 +86,11 @@ sudo chown -v lfs:lfs /home/lfs/.bashrc
 
 # Don't forget to undo this (below, just before Chapter 7)
 [ ! -e /etc/bash.bashrc ] || sudo mv -v /etc/bash.bashrc /etc/bash.bashrc.NOUSE
+
+# Don't forget to change the ownership of directory "sources".
+# Couldn't do this above in (3.1. Introduction) where it "sources" was created
+# because the user "lfs" hadn't been made yet (4.3. Adding the LFS User)
+sudo chown -vR lfs:lfs "$LFS"sources
 
 su - lfs
 
@@ -402,9 +409,9 @@ sudo umount -v "$LFS"run
 sudo chown -v $USER: "$LFS"sources/*.log
 sudo chown -v $USER: "$LFS"sources/$XCC.tar.xz
 sudo chown -v $USER: "$LFS"sources
-mv "$LFS"sources/*.log ~/somewhere
-mv "$LFS"sources/$XCC.tar.xz ~/somewhere
+mv "$LFS"sources/*.log ~/$LFSHOWTO/$LFSARCH-$LFSVER
+mv "$LFS"sources/$XCC.tar.xz ~/$LFSHOWTO/$LFSARCH-$LFSVER
 rm -r "$LFS"sources
 rm -r "$LFS"howto
 cd $LFS
-sudo tar -cJpf ~somewhere/toolchain.tar.xz .
+sudo tar -cJpf ~/$LFSHOWTO/$LFSARCH-$LFSVER/toolchain.tar.xz .

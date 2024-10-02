@@ -1,13 +1,19 @@
 export KRNVER=6.10.5
+export LFSARCH=x86_64
 export LFSVER=r12.2
-export LFSHOWTO=~/Documents/LFS-HowTo/x86_64-$LFSVER
+export LFSHOWTO=Documents/LFS-HowTo
 export LFS=/tmp/lfs/ #NOTE trailing '/'
 cd $LFS
-sudo tar -xpf $LFSHOWTO/toolchain.tar.xz
+sudo tar -xpf ~/$LFSHOWTO/$LFSARCH-$LFSVER/toolchain.tar.xz
+
+# Put a copy of needed files where (f)chroot environment can access them.
+mkdir "$LFS"howto
+cp ~/$LFSHOWTO/$LFSARCH-$LFSVER/chapter9.sh "$LFS"howto
+chmod -v +x "$LFS"howto/chapter9.sh
 
 sudo mkdir -v "$LFS"sources
-sudo cp -v $LFSHOWTO/sources/lfs-bootscripts-20230101.tar.xz "$LFS"sources
-sudo cp -v $LFSHOWTO/sources/linux-$KRNVER.tar.xz "$LFS"sources
+sudo cp -v ~/$LFSHOWTO/$LFSARCH-$LFSVER/sources/lfs-bootscripts-20240825.tar.xz "$LFS"sources
+sudo cp -v ~/$LFSHOWTO/$LFSARCH-$LFSVER/sources/linux-$KRNVER.tar.xz "$LFS"sources
 
 sudo mount -v --bind /dev "$LFS"dev
 sudo mount -v --bind /dev/pts "$LFS"dev/pts
@@ -32,215 +38,7 @@ sudo chroot "$LFS" /usr/bin/env -i   \
     /bin/bash --login
 cd /sources
 
-# 9.2. LFS-Bootscripts-20240825
-# wget https://www.linuxfromscratch.org/lfs/downloads/development/lfs-bootscripts-20240825.tar.xz
-tar -xvf lfs-bootscripts-20240825.tar.xz
-cd lfs-bootscripts-20240825
-make install
-cd ..
-rm -r lfs-bootscripts-20240825
-
-#######
-9.4.1.2. Creating Custom Udev Rules (ie naming scheme)
-#######
-#TODO: in 9.5.1 below, replace "eth0" with the name of your ehernet device. Or follow this part of LFS.
-#TODO: in 9.5.2 and 9.5.3 below, replace "whozawhatzit" with your computer (host) name
-#	and "8.8.8.8"/"8.8.4.4" with the IP address of your primary/secondary nameserver.
-
-#######
-# 9.5. General Network Configuration
-#######
-
-#########
-# 9.5.1. Creating Network Interface Configuration Files
-#########
-cat > /etc/sysconfig/ifconfig.eth0 << "EOF"
-ONBOOT=yes
-IFACE=eth0
-SERVICE=ipv4-static
-IP=192.168.1.2
-GATEWAY=192.168.1.1
-PREFIX=24
-BROADCAST=192.168.1.255
-EOF
-
-#########
-# 9.5.2. Creating the /etc/resolv.conf File
-#########
-cat > /etc/resolv.conf << "EOF"
-# Begin /etc/resolv.conf
-
-domain localdomain
-nameserver 8.8.8.8
-nameserver 8.8.4.4
-
-# End /etc/resolv.conf
-EOF
-
-#########
-# 9.5.3. Configuring the system hostname
-#########
-echo "whozawhatzit" > /etc/hostname
-
-#########
-# 9.5.4. Customizing the /etc/hosts File
-#########
-cat > /etc/hosts << "EOF"
-# Begin /etc/hosts
-
-127.0.0.1 localhost.localdomain localhost
-127.0.1.1 whozawhatzit.localdomain whozawhatzit
-192.168.1.2 whozawhatzit.localdomain whozawhatzit
-::1       localhost ip6-localhost ip6-loopback
-ff02::1   ip6-allnodes
-ff02::2   ip6-allrouters
-
-# End /etc/hosts
-EOF
-
-#######
-# 9.6. System V Bootscript Usage and Configuration
-#######
-
-#########
-# 9.6.2. Configuring Sysvinit
-#########
-cat > /etc/inittab << "EOF"
-# Begin /etc/inittab
-
-id:3:initdefault:
-
-si::sysinit:/etc/rc.d/init.d/rc S
-
-l0:0:wait:/etc/rc.d/init.d/rc 0
-l1:S1:wait:/etc/rc.d/init.d/rc 1
-l2:2:wait:/etc/rc.d/init.d/rc 2
-l3:3:wait:/etc/rc.d/init.d/rc 3
-l4:4:wait:/etc/rc.d/init.d/rc 4
-l5:5:wait:/etc/rc.d/init.d/rc 5
-l6:6:wait:/etc/rc.d/init.d/rc 6
-
-ca:12345:ctrlaltdel:/sbin/shutdown -t1 -a -r now
-
-su:S06:once:/sbin/sulogin
-s1:1:respawn:/sbin/sulogin
-
-1:2345:respawn:/sbin/agetty --noclear tty1 9600
-2:2345:respawn:/sbin/agetty tty2 9600
-3:2345:respawn:/sbin/agetty tty3 9600
-4:2345:respawn:/sbin/agetty tty4 9600
-5:2345:respawn:/sbin/agetty tty5 9600
-6:2345:respawn:/sbin/agetty tty6 9600
-
-# End /etc/inittab
-EOF
-
-#########
-# 9.6.4. Configuring the System Clock
-#########
-cat > /etc/sysconfig/clock << "EOF"
-# Begin /etc/sysconfig/clock
-
-UTC=1
-
-# Set this to any options you might need to give to hwclock,
-# such as machine hardware clock type for Alphas.
-CLOCKPARAMS=
-
-# End /etc/sysconfig/clock
-EOF
-
-#########
-# 9.6.5. Configuring the Linux Console
-#########
-cat > /etc/sysconfig/console << "EOF"
-# Begin /etc/sysconfig/console
-
-UNICODE="1"
-#KEYMAP="??"
-FONT="lat1-16 -m 8859-1"
-
-# End /etc/sysconfig/console
-EOF
-
-#######
-# 9.7. Configuring the System Locale
-#######
-LC_ALL=en_US.ISO-8859-1 locale language
-LC_ALL=en_US.ISO-8859-1 locale charmap
-LC_ALL=en_US.ISO-8859-1 locale int_curr_symbol
-LC_ALL=en_US.ISO-8859-1 locale int_prefix
-
-cat > /etc/profile << "EOF"
-# Begin /etc/profile
-
-if [[ "$TERM" = linux ]]; then
-  export LANG=C.UTF-8
-else
-  export LANG=LC_ALL=en_US.ISO-8859-1
-fi
-
-# End /etc/profile
-EOF
-
-#######
-# 9.8. Creating the /etc/inputrc File
-#######
-cat > /etc/inputrc << "EOF"
-# Begin /etc/inputrc
-# Modified by Chris Lynn <roryo@roryo.dynup.net>
-
-# Allow the command prompt to wrap to the next line
-set horizontal-scroll-mode Off
-
-# Enable 8-bit input
-set meta-flag On
-set input-meta On
-
-# Turns off 8th bit stripping
-set convert-meta Off
-
-# Keep the 8th bit for display
-set output-meta On
-
-# none, visible or audible
-set bell-style none
-
-# All of the following map the escape sequence of the value
-# contained in the 1st argument to the readline specific functions
-"\eOd": backward-word
-"\eOc": forward-word
-
-# for linux console
-"\e[1~": beginning-of-line
-"\e[4~": end-of-line
-"\e[5~": beginning-of-history
-"\e[6~": end-of-history
-"\e[3~": delete-char
-"\e[2~": quoted-insert
-
-# for xterm
-"\eOH": beginning-of-line
-"\eOF": end-of-line
-
-# for Konsole
-"\e[H": beginning-of-line
-"\e[F": end-of-line
-
-# End /etc/inputrc
-EOF
-
-#######
-# 9.9. Creating the /etc/shells File
-#######
-cat > /etc/shells << "EOF"
-# Begin /etc/shells
-
-/bin/sh
-/bin/bash
-
-# End /etc/shells
-EOF
+$LFS/howto/chapter9.sh > $LFS/sources/chapter9.log 2>&1
 
 ##
 # Chapter 10. Making the LFS System Bootable
@@ -249,24 +47,7 @@ EOF
 #######
 # 10.2. Creating the /etc/fstab File
 ########
-cat > /etc/fstab << "EOF"
-# Begin /etc/fstab
-
-# file system  mount-point    type     options             dump  fsck
-#                                                                order
-
-/dev/<??sdc2>  /              <fff>    defaults            1     1
-#/dev/<yyy>    swap           swap     pri=1               0     0
-proc           /proc          proc     nosuid,noexec,nodev 0     0
-sysfs          /sys           sysfs    nosuid,noexec,nodev 0     0
-devpts         /dev/pts       devpts   gid=5,mode=620      0     0
-tmpfs          /run           tmpfs    defaults            0     0
-devtmpfs       /dev           devtmpfs mode=0755,nosuid    0     0
-tmpfs          /dev/shm       tmpfs    nosuid,nodev        0     0
-cgroup2        /sys/fs/cgroup cgroup2  nosuid,noexec,nodev 0     0
-
-# End /etc/fstab
-EOF
+# This is done at the end of chapter9.sh
 
 ########
 # 10.3. Linux-$KRNVER
@@ -286,17 +67,18 @@ make menuconfig
 #    [*] Pressure stall information tracking                                [PSI]
 #    [ ]   Require boot parameter to enable pressure stall information tracking
 #                                                     ...  [PSI_DEFAULT_DISABLED]
-#  < > Enable kernel headers through /sys/kernel/kheaders.tar.xz [IKHEADERS]
+#D < > Enable kernel headers through /sys/kernel/kheaders.tar.xz [IKHEADERS]
 #  [*] Control Group support --->                                       [CGROUPS]
 #    [*] Memory controller                                                [MEMCG]
-#  [ ] Configure standard kernel features (expert users) --->            [EXPERT]
+#D [ ] Configure standard kernel features (expert users) --->            [EXPERT]
 #Processor type and features --->
 #  [*] Support x2apic (needs [PCI_MSI] & [IRQ_REMAP]) [X86_X2APIC]
-#  [*] Build a relocatable kernel [RELOCATABLE]
-#  [*]   Randomize the address of the kernel image (KASLR) [RANDOMIZE_BASE]
 #  [*] EFI runtime service support                              [EFI]
 #  [*]   EFI stub support                                       [EFI_STUB]
-#  [ ]   EFI mixed-mode support                                       [EFI_MIXED]
+#  [ ]     EFI handover protocol (DEPRECATED)                     [EFI_HANDOVER_PROTOCOL]
+#  [ ]     EFI mixed-mode support                                       [EFI_MIXED]
+#D [*] Build a relocatable kernel [RELOCATABLE]
+#D [*]   Randomize the address of the kernel image (KASLR) [RANDOMIZE_BASE]
 #  [*] Built-in kernel command line
 #    ()    Built-in kernel command string
 #      CONFIG_CMDLINE=root=/dev/sda1 ro rootfstype=ext4 rootdelay=10
@@ -305,33 +87,33 @@ make menuconfig
 #   <*/M>     KVM for Intel (and compatible) processors support         [KVM_INTEL]
 #   <*/M>     KVM for AMD processors support                            [KVM_AMD]
 #General architecture-dependent options  --->
-#  [*] Stack Protector buffer overflow detection                [STACKPROTECTOR]
-#  [*]   Strong Stack Protector                                 [STACKPROTECTOR_STRONG]
+#D [*] Stack Protector buffer overflow detection                [STACKPROTECTOR]
+#D [*]   Strong Stack Protector                                 [STACKPROTECTOR_STRONG]
 #Enable the block layer --->                                          [BLOCK]
 #  Partition Types --->
 #    [*] Advanced partition selection                           [PARTITION_ADVANCED]
 #    [*] EFI GUID Partition support                             [EFI_PARTITION]
 #Device Drivers --->
-#  NVME Support --->
-#    <*> NVM Express block device                                  [BLK_DEV_NVME]
 #  [*] PCI Support --->                                         [PCI]
-#    [*] Message Signaled Interrupts (MSI and MSI-X)            [PCI_MSI]
+#D   [*] Message Signaled Interrupts (MSI and MSI-X)            [PCI_MSI]
 #  Generic Driver Options  --->
-#   [ ] Support for uevent helper [UEVENT_HELPER]
-#   [*] Maintain a devtmpfs filesystem to mount at /dev [DEVTMPFS]
-#   [*]   Automount devtmpfs at /dev, after the kernel mounted the rootfs [DEVTMPFS_MOUNT]
+#D  [ ] Support for uevent helper [UEVENT_HELPER]
+#D  [*] Maintain a devtmpfs filesystem to mount at /dev [DEVTMPFS]
+#D  [*]   Automount devtmpfs at /dev, after the kernel mounted the rootfs [DEVTMPFS_MOUNT]
 #  Firmware Drivers --->
 #    [*] Mark VGA/VBE/EFI FB as generic system framebuffer       [SYSFB_SIMPLEFB]
 #    EFI (Extensible Firmware Interface) Support --->
-#?     < > EFI Variable Support via sysfs                         [EFI_VARS]
-#      [*] Export efi runtime maps to sysfs                       [EFI_RUNTIME_MAP]
+#gone?     < > EFI Variable Support via sysfs                         [EFI_VARS]
+#*moved and usually hidden*     [*] Export efi runtime maps to sysfs                       [EFI_RUNTIME_MAP]
+#  NVME Support --->
+#    <*> NVM Express block device                                  [BLK_DEV_NVME]
 #  Graphics support --->
 #    <*> Direct Rendering Manager (XFree86 ... support) --->    [DRM]
 #      [*] Enable legacy fbdev support for your modesetting driver
 #                                                      ...  [DRM_FBDEV_EMULATION]
 #      <*> Simple framebuffer driver                              [DRM_SIMPLEDRM]
 #    Frame buffer Devices --->
-#      <*> Support for frame buffer devices --->                    [FB]
+#      <*> Support for frame buffer device drivers --->             [FB]
 #        [*] EFI-based Framebuffer support                      [FB_EFI]
 #    Console display driver support --->
 #      [*] Framebuffer Console support                          [FRAMEBUFFER_CONSOLE]
@@ -371,29 +153,33 @@ rm -r linux-$KRNVER
 # Backup
 ########
 logout
-sudo rm -rf "$LFS"sources
 mountpoint -q "$LFS"dev/shm && sudo umount -v "$LFS"dev/shm
 sudo umount -v "$LFS"dev/pts
 sudo umount -v "$LFS"{sys,proc,run,dev}
+sudo chown -v $USER: "$LFS"sources/*.log
+sudo chown -v $USER: "$LFS"sources
+mv "$LFS"sources/*.log ~/$LFSHOWTO/$LFSARCH-$LFSVER
+sudo rm -rf "$LFS"sources
+sudo rm -rf "$LFS"howto
 cd $LFS
-sudo tar -cJpf $HOME/lfs-system-$LFSVER.tar.xz .
+sudo tar -cJpf ~/$LFSHOWTO/$LFSARCH-$LFSVER/lfs-system-$LFSVER.tar.xz .
 cd ~
 
 ########
 # Instead of GRUB
 ########
-cp arch/x86/boot/bzImage /boot/efi/EFI/boot/bootx64.efi
-sudo efibootmgr --create --disk /dev/<??sdc2> --part 2 --label "LFS no grub, yo!" --loader '\efi\boot\bootx64.efi'
+cp "$LFS"/boot/vmlinuz-$KRNVER-lfs-$LFSVER /boot/efi/EFI/boot/bootx64.efi
+sudo efibootmgr --create --disk /dev/sdc --part 1 --label "LFS no grub, yo!" --loader '\efi\boot\bootx64.efi'
 
 ########
 # GRUB-ify onto SD Card with two partitions
 ########
-sudo mkfs -v -t ext4 /dev/<??sdc2>
+sudo mkfs -v -t ext4 /dev/sdc2
 
-sudo mkfs.vfat /dev/<??sdc1>
-sudo fdisk /dev/<??sdc> #and t and 1 and EFI and w
+sudo mkfs.vfat /dev/sdc1
+sudo fdisk /dev/sdc #and t and 1 and EFI and w
 
-sudo mount -t ext4 /dev/<??sdc2> $LFS
+sudo mount -t ext4 /dev/sdc2 $LFS
 cd $LFS
 sudo tar -xpf ~/lfs-system-$LFSVER.tar.xz
 
@@ -409,10 +195,10 @@ fi
 sudo chroot "$LFS" /usr/bin/env -i HOME=/root TERM="$TERM" PS1='(lfs chroot) \u:\w\$ ' PATH=/usr/bin:/usr/sbin MAKEFLAGS="-j$(nproc)" /bin/bash --login
 
 mkdir -pv /boot/efi
-mount -v -t vfat /dev/<??sdc1> /boot/efi
+mount -v -t vfat /dev/sdc1 /boot/efi
 #No! use vi and add this by hand
 cat >> /etc/fstab << EOF
-/dev/<??sdc1> /boot/efi vfat defaults 0 1
+/dev/sdc1 /boot/efi vfat defaults 0 1
 efivarfs /sys/firmware/efi/efivars efivarfs defaults 0 0
 EOF
 
@@ -428,7 +214,7 @@ insmod part_msdos
 set root=(hd0,gpt2)
 
 menuentry "GNU/Linux, Linux $KRNVER-lfs-$LFSVER"  {
-  linux   /boot/vmlinuz-$KRNVER-lfs-$LFSVER root=/dev/<??sdc2> ro rootfstype=ext4 rootdelay=10
+  linux   /boot/vmlinuz-$KRNVER-lfs-$LFSVER root=/dev/sdc2 ro rootfstype=ext4 rootdelay=10
 }
 
 menuentry "Firmware Setup" {

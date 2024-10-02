@@ -252,7 +252,7 @@ rm -r Python-3.12.5
 
 # 8.53. Flit-Core-3.9.0
 # wget https://pypi.org/packages/source/f/flit-core/flit_core-3.9.0.tar.gz
-tar -xf flit_core-3.9.0.tar.xz
+tar -xf flit_core-3.9.0.tar.gz
 cd flit_core-3.9.0
 pip3 wheel -w dist --no-cache-dir --no-build-isolation --no-deps $PWD
 pip3 install --no-index --no-user --find-links dist flit_core
@@ -275,7 +275,7 @@ cd setuptools-72.2.0
 pip3 wheel -w dist --no-cache-dir --no-build-isolation --no-deps $PWD
 pip3 install --no-index --find-links dist setuptools
 cd ..
-rm -f setuptools-72.2.0
+rm -r setuptools-72.2.0
 
 # 8.52. Ninja-1.12.1
 # wget https://github.com/ninja-build/ninja/archive/v1.12.1/ninja-1.12.1.tar.gz
@@ -513,6 +513,7 @@ make
 chown -R tester .
 su tester -c "TERM=xterm-256color LANG=en_US.UTF-8 make -j1 test" \
    &> vim-test.log
+mv -v vim-test.log ..
 make install
 # If you want "vi" to run vim (next 4 lines):
 #ln -sv vim /usr/bin/vi
@@ -607,7 +608,7 @@ sed 's|lib.*udevd|sbin/udevd|'                                        \
 rm /usr/share/man/man*/systemd*
 unset udev_helpers
 udev-hwdb update
-cd ..
+cd ../..
 rm -r systemd-256.4
 
 # 8.77. Man-DB-2.12.1

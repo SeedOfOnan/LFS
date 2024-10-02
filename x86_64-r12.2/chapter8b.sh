@@ -113,7 +113,7 @@ rm -r glibc-2.40
 
 # 8.6. Zlib-1.3.1
 # wget https://zlib.net/fossils/zlib-1.3.1.tar.gz
-tar -xf zlib-1.3.1.tar.xz
+tar -xf zlib-1.3.1.tar.gz
 cd zlib-1.3.1
 ./configure --prefix=/usr
 make
@@ -320,7 +320,7 @@ rm -r dejagnu-1.6.3
 
 # 8.19. Pkgconf-2.3.0
 # wget https://distfiles.ariadne.space/pkgconf/pkgconf-2.3.0.tar.xz
-tar -xf pkgconf-2.3.0.tar.gz
+tar -xf pkgconf-2.3.0.tar.xz
 cd pkgconf-2.3.0
 ./configure --prefix=/usr              \
             --disable-static           \

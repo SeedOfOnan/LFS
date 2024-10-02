@@ -1,4 +1,5 @@
 #!/bin/bash
+if [ "$(whoami)" != "lfs" ]; then exit 1; fi
 if [ -z ${LFS+x} ]; then exit 1; fi
 if [ -z ${XCC+x} ]; then exit 1; fi
 if [ -z ${LFS_TGT+x} ]; then exit 1; fi
@@ -141,8 +142,6 @@ sed '/RTLDLIST=/s@/usr@@g' -i $LFS/usr/bin/ldd
 echo 'int main(){}' | $LFS_TGT-gcc -xc -
 $LFS_TGT-readelf -l a.out | grep "\[Requesting program interpreter: /lib64/ld-linux-x86-64\.so\.2\]"
 rm -v a.out
-
-$LFS/$XCC/libexec/gcc/$LFS_TGT/14.2.0/install-tools/mkheaders
 
 cd ../..
 rm -rf glibc-2.40

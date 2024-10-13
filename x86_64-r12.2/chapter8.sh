@@ -1178,7 +1178,7 @@ rm -r iproute2-6.10.0
 
 # 8.67. Kbd-2.6.4
 # wget https://www.kernel.org/pub/linux/utils/kbd/kbd-2.6.4.tar.xz
-# wget https://www.linuxfromscratch.org/patches/lfs/11.2/kbd-2.6.4-backspace-1.patch
+# wget https://www.linuxfromscratch.org/patches/lfs/12.2/kbd-2.6.4-backspace-1.patch
 tar -xf kbd-2.6.4.tar.xz
 cd kbd-2.6.4
 patch -Np1 -i ../kbd-2.6.4-backspace-1.patch

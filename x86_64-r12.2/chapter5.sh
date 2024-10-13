@@ -106,7 +106,7 @@ rm -r linux-6.10.5
 
 # 5.5. Glibc-2.40
 # wget https://ftp.gnu.org/gnu/glibc/glibc-2.40.tar.xz
-# wget  https://www.linuxfromscratch.org/patches/lfs/11.2/glibc-2.40-fhs-1.patch
+# wget  https://www.linuxfromscratch.org/patches/lfs/12.2/glibc-2.40-fhs-1.patch
 tar -xf glibc-2.40.tar.xz
 cd glibc-2.40
 

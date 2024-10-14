@@ -1,0 +1,231 @@
+export KRNVER=6.11.1
+export LFSARCH=x86_64
+export LFSVER=r12.2
+export LFSHOWTO=Documents/LFS-HowTo
+export LFS=/tmp/lfs/ #NOTE trailing '/'
+cd $LFS
+sudo tar -xpf ~/$LFSHOWTO/$LFSARCH-$LFSVER/toolchain.tar.xz
+
+# Put a copy of needed files where (f)chroot environment can access them.
+mkdir "$LFS"howto
+cp ~/$LFSHOWTO/$LFSARCH-$LFSVER/chapter9.sh "$LFS"howto
+chmod -v +x "$LFS"howto/chapter9.sh
+
+sudo mkdir -v "$LFS"sources
+sudo cp -v ~/$LFSHOWTO/$LFSARCH-$LFSVER/sources/lfs-bootscripts-20240825.tar.xz "$LFS"sources
+sudo cp -v ~/$LFSHOWTO/$LFSARCH-$LFSVER/sources/linux-$KRNVER.tar.xz "$LFS"sources
+
+sudo mount -v --bind /dev "$LFS"dev
+sudo mount -v --bind /dev/pts "$LFS"dev/pts
+sudo mount -vt proc proc "$LFS"proc
+sudo mount -vt sysfs sysfs "$LFS"sys
+sudo mount -vt tmpfs tmpfs "$LFS"run
+if [ -h "$LFS"dev/shm ]; then
+  SHM=$(realpath /dev/shm) # Leading slash needs to be stripped off
+  sudo install -v -d -m 1777 "$LFS"${SHM/\//}
+else
+  sudo mount -vt tmpfs -o nosuid,nodev tmpfs "$LFS"dev/shm
+fi
+
+sudo chroot "$LFS" /usr/bin/env -i   \
+    HOME=/root                  \
+    TERM="$TERM"                \
+    KRNVER="$KRNVER"            \
+    LFSVER="$LFSVER"            \
+    PS1='(lfs chroot) \u:\w\$ ' \
+    PATH=/usr/bin:/usr/sbin     \
+    MAKEFLAGS="-j$(nproc)"      \
+    /bin/bash --login
+cd /sources
+
+$LFS/howto/chapter9.sh > $LFS/sources/chapter9.log 2>&1
+
+##
+# Chapter 10. Making the LFS System Bootable
+##
+
+#######
+# 10.2. Creating the /etc/fstab File
+########
+# This is done at the end of chapter9.sh
+
+########
+# 10.3. Linux-$KRNVER
+########
+
+# 10.3.1. Installation of the kernel
+# wget https://www.kernel.org/pub/linux/kernel/v6.x/linux-$KRNVER.tar.xz
+tar -xf linux-$KRNVER.tar.xz
+cd linux-$KRNVER
+make mrproper
+make defconfig
+make menuconfig
+#!These needed settings for UEFI are from BLFS and a few from LFS
+#General setup --->
+#  [ ] Compile the kernel with warnings as errors               [WERROR]
+#  CPU/Task time and stats accounting --->
+#    [*] Pressure stall information tracking                                [PSI]
+#    [ ]   Require boot parameter to enable pressure stall information tracking
+#                                                     ...  [PSI_DEFAULT_DISABLED]
+#D < > Enable kernel headers through /sys/kernel/kheaders.tar.xz [IKHEADERS]
+#  [*] Control Group support --->                                       [CGROUPS]
+#    [*] Memory controller                                                [MEMCG]
+#D [ ] Configure standard kernel features (expert users) --->            [EXPERT]
+#Processor type and features --->
+#  [*] Support x2apic (needs [PCI_MSI] & [IRQ_REMAP]) [X86_X2APIC]
+#  [*] EFI runtime service support                              [EFI]
+#  [*]   EFI stub support                                       [EFI_STUB]
+#  [ ]     EFI handover protocol (DEPRECATED)                     [EFI_HANDOVER_PROTOCOL]
+#  [ ]     EFI mixed-mode support                                       [EFI_MIXED]
+#D [*] Build a relocatable kernel [RELOCATABLE]
+#D [*]   Randomize the address of the kernel image (KASLR) [RANDOMIZE_BASE]
+#  [*] Built-in kernel command line
+#    ()    Built-in kernel command string
+#      CONFIG_CMDLINE=root=/dev/sda1 ro rootfstype=ext4 rootdelay=10
+# [*] Virtualization:  --->                                             [VIRTUALIZATION]
+#   <*/M>   Kernel-based Virtual Machine (KVM) support [KVM]
+#   <*/M>     KVM for Intel (and compatible) processors support         [KVM_INTEL]
+#   <*/M>     KVM for AMD processors support                            [KVM_AMD]
+#General architecture-dependent options  --->
+#D [*] Stack Protector buffer overflow detection                [STACKPROTECTOR]
+#D [*]   Strong Stack Protector                                 [STACKPROTECTOR_STRONG]
+#Enable the block layer --->                                          [BLOCK]
+#  Partition Types --->
+#    [*] Advanced partition selection                           [PARTITION_ADVANCED]
+#    [*] EFI GUID Partition support                             [EFI_PARTITION]
+#Device Drivers --->
+#  [*] PCI Support --->                                         [PCI]
+#D   [*] Message Signaled Interrupts (MSI and MSI-X)            [PCI_MSI]
+#  Generic Driver Options  --->
+#D  [ ] Support for uevent helper [UEVENT_HELPER]
+#D  [*] Maintain a devtmpfs filesystem to mount at /dev [DEVTMPFS]
+#D  [*]   Automount devtmpfs at /dev, after the kernel mounted the rootfs [DEVTMPFS_MOUNT]
+#  Firmware Drivers --->
+#    [*] Mark VGA/VBE/EFI FB as generic system framebuffer       [SYSFB_SIMPLEFB]
+#    EFI (Extensible Firmware Interface) Support --->
+#gone?     < > EFI Variable Support via sysfs                         [EFI_VARS]
+#*moved and usually hidden*     [*] Export efi runtime maps to sysfs                       [EFI_RUNTIME_MAP]
+#  NVME Support --->
+#    <*> NVM Express block device                                  [BLK_DEV_NVME]
+#  Graphics support --->
+#    <*> Direct Rendering Manager (XFree86 ... support) --->    [DRM]
+#      [*] Enable legacy fbdev support for your modesetting driver
+#                                                      ...  [DRM_FBDEV_EMULATION]
+#      <*> Simple framebuffer driver                              [DRM_SIMPLEDRM]
+#    Frame buffer Devices --->
+#      <*> Support for frame buffer device drivers --->             [FB]
+#        [*] EFI-based Framebuffer support                      [FB_EFI]
+#    Console display driver support --->
+#      [*] Framebuffer Console support                          [FRAMEBUFFER_CONSOLE]
+#  [*] IOMMU Hardware Support --->                              [IOMMU_SUPPORT]
+#    [*] Support for Interrupt Remapping                        [IRQ_REMAP]
+#File systems --->
+#  DOS/FAT/EXFAT/NT Filesystems  --->
+#    <*/M> VFAT (Windows-95) fs support                                 [VFAT_FS]
+#    <*/M> exFAT filesystem support
+#    <*/M> NTFS Read-Write file system support                   [NTFS3_FS]
+#  Pseudo filesystems --->
+#    <*/M> EFI Variable filesystem                              [EFIVAR_FS]
+#  -*- Native language support --->                                         [NLS]
+#    <*/M> Codepage 437 (United States, Canada)                [NLS_CODEPAGE_437]
+#    <*/M> NLS ISO 8859-1  (Latin 1; Western European Languages)  [NLS_ISO8859_1]
+make
+make modules_install
+cp -iv arch/x86/boot/bzImage /boot/vmlinuz-$KRNVER-lfs-$LFSVER
+cp -iv System.map /boot/System.map-$KRNVER
+cp -iv .config /boot/config-$KRNVER
+cp -r Documentation -T /usr/share/doc/linux-$KRNVER
+install -v -m755 -d /etc/modprobe.d
+cat > /etc/modprobe.d/usb.conf << "EOF"
+# Begin /etc/modprobe.d/usb.conf
+
+install ohci_hcd /sbin/modprobe ehci_hcd ; /sbin/modprobe -i ohci_hcd ; true
+install uhci_hcd /sbin/modprobe ehci_hcd ; /sbin/modprobe -i uhci_hcd ; true
+
+# End /etc/modprobe.d/usb.conf
+EOF
+
+cd ..
+rm -r linux-$KRNVER
+
+
+########
+# Backup
+########
+logout
+mountpoint -q "$LFS"dev/shm && sudo umount -v "$LFS"dev/shm
+sudo umount -v "$LFS"dev/pts
+sudo umount -v "$LFS"{sys,proc,run,dev}
+sudo chown -v $USER: "$LFS"sources/*.log
+sudo chown -v $USER: "$LFS"sources
+mv "$LFS"sources/*.log ~/$LFSHOWTO/$LFSARCH-$LFSVER
+sudo rm -rf "$LFS"sources
+sudo rm -rf "$LFS"howto
+cd $LFS
+sudo tar -cJpf ~/$LFSHOWTO/$LFSARCH-$LFSVER/lfs-system-$LFSVER.tar.xz .
+cd ~
+
+########
+# Instead of GRUB
+########
+cp "$LFS"/boot/vmlinuz-$KRNVER-lfs-$LFSVER /boot/efi/EFI/boot/bootx64.efi
+sudo efibootmgr --create --disk /dev/sdc --part 1 --label "LFS no grub, yo!" --loader '\efi\boot\bootx64.efi'
+
+########
+# GRUB-ify onto SD Card with two partitions
+########
+sudo mkfs -v -t ext4 /dev/sdc2
+
+sudo mkfs.vfat /dev/sdc1
+sudo fdisk /dev/sdc #and t and 1 and EFI and w
+
+sudo mount -t ext4 /dev/sdc2 $LFS
+cd $LFS
+sudo tar -xpf ~/lfs-system-$LFSVER.tar.xz
+
+sudo mount -v --bind /dev "$LFS"dev
+sudo mount -v --bind /dev/pts "$LFS"dev/pts
+sudo mount -vt proc proc "$LFS"proc
+sudo mount -vt sysfs sysfs "$LFS"sys
+sudo mount -vt tmpfs tmpfs "$LFS"run
+if [ -h $LFS/dev/shm ]; then
+  sudo mkdir -pv "$LFS"$(readlink "$LFS"dev/shm)
+fi
+
+sudo chroot "$LFS" /usr/bin/env -i HOME=/root TERM="$TERM" PS1='(lfs chroot) \u:\w\$ ' PATH=/usr/bin:/usr/sbin MAKEFLAGS="-j$(nproc)" /bin/bash --login
+
+mkdir -pv /boot/efi
+mount -v -t vfat /dev/sdc1 /boot/efi
+#No! use vi and add this by hand
+cat >> /etc/fstab << EOF
+/dev/sdc1 /boot/efi vfat defaults 0 1
+efivarfs /sys/firmware/efi/efivars efivarfs defaults 0 0
+EOF
+
+grub-install -v --bootloader-id=LFS --recheck --removable
+
+cat > /boot/grub/grub.cfg << EOF
+# Begin /boot/grub/grub.cfg
+set default=0
+set timeout=5
+
+insmod part_gpt
+insmod part_msdos
+set root=(hd0,gpt2)
+
+menuentry "GNU/Linux, Linux $KRNVER-lfs-$LFSVER"  {
+  linux   /boot/vmlinuz-$KRNVER-lfs-$LFSVER root=/dev/sdc2 ro rootfstype=ext4 rootdelay=10
+}
+
+menuentry "Firmware Setup" {
+  fwsetup
+}
+EOF
+
+umount /boot/efi
+logout
+sudo umount -v $LFS/dev/pts
+sudo umount -v $LFS/{sys,proc,run,dev}
+cd ~
+sudo umount $LFS
+

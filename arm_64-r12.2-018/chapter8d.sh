@@ -26,7 +26,7 @@ cd test
 echo 'int main(){}' > dummy.c
 cc dummy.c -v -Wl,--verbose &> dummy.log
 readelf -l a.out | grep ': /lib'
-#EXPECT [Requesting program interpreter: /lib64/ld-linux-x86-64.so.2]
+#EXPECT [Requesting program interpreter: /lib/ld-linux-aarch64.so.1]
 grep -E -o '/usr/lib.*/S?crt[1in].*succeeded' dummy.log
 #EXPECT  /usr/lib/gcc/x86_64-pc-linux-gnu/14.2.0/../../../../lib/Scrt1.o succeeded
 #EXPECT  /usr/lib/gcc/x86_64-pc-linux-gnu/14.2.0/../../../../lib/crti.o succeeded
@@ -49,7 +49,7 @@ grep 'SEARCH.*/usr/lib' dummy.log |sed 's|; |\n|g'
 grep "/lib.*/libc.so.6 " dummy.log
 #EXPECT attempt to open /usr/lib/libc.so.6 succeeded
 grep found dummy.log
-#EXPECT found ld-linux-x86-64.so.2 at /usr/lib/ld-linux-x86-64.so.2
+#EXPECT found ld-linux-aarch64.so.1 at /usr/lib/ld-linux-aarch64.so.1
 rm -v dummy.c a.out dummy.log
 cd ..
 rmdir -v test

@@ -157,8 +157,8 @@ rm -r shadow-4.16.0
 # 8.29. GCC-14.2.0
 tar -xf gcc-14.2.0.tar.xz
 cd gcc-14.2.0
-sed -e '/m64=/s/lib64/lib/' \
-    -i.orig gcc/config/i386/t-linux64 #x86_64
+#sed -e '/m64=/s/lib64/lib/' \
+#    -i.orig gcc/config/i386/t-linux64 #x86_64
 mkdir -v build
 cd       build
 ../configure --prefix=/usr            \

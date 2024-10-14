@@ -262,7 +262,7 @@ tar -xf ../gmp-6.3.0.tar.xz
 mv -v gmp-6.3.0 gmp
 tar -xf ../mpc-1.3.1.tar.gz
 mv -v mpc-1.3.1 mpc
-sed -e '/m64=/s/lib64/lib/' -i.orig gcc/config/i386/t-linux64 #x86_64
+#sed -e '/m64=/s/lib64/lib/' -i.orig gcc/config/i386/t-linux64 #x86_64
 
 #Allow building libgcc and libstdc++ libraries with POSIX threads support
 sed '/thread_header =/s/@.*@/gthr-posix.h/' \

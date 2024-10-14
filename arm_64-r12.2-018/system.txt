@@ -1,5 +1,5 @@
 export KRNVER=6.11.1
-export LFSARCH=x86_64
+export LFSARCH=arm_64
 export LFSVER=r12.2
 export LFSHOWTO=Documents/LFS-HowTo
 export LFS=/tmp/lfs/ #NOTE trailing '/'

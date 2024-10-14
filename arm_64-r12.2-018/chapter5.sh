@@ -56,7 +56,7 @@ mv -v gmp-6.3.0 gmp
 tar -xf ../mpc-1.3.1.tar.gz
 mv -v mpc-1.3.1 mpc
 
-sed -e '/m64=/s/lib64/lib/' -i.orig gcc/config/i386/t-linux64 #x86_64
+#sed -e '/m64=/s/lib64/lib/' -i.orig gcc/config/i386/t-linux64 #x86_64
 
 mkdir -v build
 cd       build
@@ -117,9 +117,9 @@ cd glibc-2.40
 
 # For LSB compliance
 #ln -sfv ld-linux.so.2 $LFS/lib/ld-lsb.so.3 #i?86
-mkdir -v $LFS/lib64 #x86_64
-ln -sfv ../lib/ld-linux-x86-64.so.2 $LFS/lib64 #x86_64
-ln -sfv ../lib/ld-linux-x86-64.so.2 $LFS/lib64/ld-lsb-x86-64.so.3 #x86_64
+#mkdir -v $LFS/lib64 #x86_64
+#ln -sfv ../lib/ld-linux-x86-64.so.2 $LFS/lib64 #x86_64
+#ln -sfv ../lib/ld-linux-x86-64.so.2 $LFS/lib64/ld-lsb-x86-64.so.3 #x86_64
 
 # Fix an issue building Glibc with parallel jobs and make-4.4 or later:
 sed '/MAKEFLAGS :=/s/)r/) -r/' -i Makerules
@@ -145,7 +145,7 @@ make DESTDIR=$LFS install
 sed '/RTLDLIST=/s@/usr@@g' -i $LFS/usr/bin/ldd
 
 echo 'int main(){}' | $LFS_TGT-gcc -xc -
-$LFS_TGT-readelf -l a.out | grep "\[Requesting program interpreter: /lib64/ld-linux-x86-64\.so\.2\]"
+$LFS_TGT-readelf -l a.out | grep "\[Requesting program interpreter: /lib/ld-linux-aarch64\.so\.1\]"
 rm -v a.out
 
 cd ../..

@@ -8,7 +8,7 @@
 # - /usr/bin/awk is a symbolic link to gawk.
 # - /usr/bin/yacc is a symbolic link to bison, or to a small script that executes bison.
 
-export LFSARCH=x86_64
+export LFSARCH=arm_64
 export LFSVER=r12.2-018
 export LFSHOWTO=Documents/LFS-HowTo
 export LFS=/tmp/lfs/ #NOTE trailing '/'
@@ -137,7 +137,7 @@ exit
 
 # 7.2. Changing Ownership
 sudo chown --from lfs -R root:root "$LFS"{usr,lib,var,etc,bin,sbin}
-sudo chown --from lfs -R root:root "$LFS"lib64 #x86_64
+#sudo chown --from lfs -R root:root "$LFS"lib64 #x86_64
 # 7.3. Preparing Virtual Kernel File Systems
 sudo mkdir -pv "$LFS"{dev,proc,sys,run}
 # 7.3.1. Mounting and Populating /dev

@@ -157,16 +157,14 @@ rm -r shadow-4.16.0
 # 8.29. GCC-14.2.0
 tar -xf gcc-14.2.0.tar.xz
 cd gcc-14.2.0
-#sed -e '/m64=/s/lib64/lib/' \
-#    -i.orig gcc/config/i386/t-linux64 #x86_64
+sed -e '/lp64=/s/lib64/lib/' \
+    -i.orig gcc/config/aarch64/t-aarch64-linux #arm_64
 mkdir -v build
 cd       build
 ../configure --prefix=/usr            \
              LD=ld                    \
              --enable-languages=c,c++ \
              --enable-default-pie     \
-  --with-arch=armv8-a       \
-  --with-tune=cortex-a76.cortex-a55 \
              --enable-default-ssp     \
              --enable-host-pie        \
              --disable-multilib       \
@@ -176,9 +174,9 @@ cd       build
 make
 ulimit -s -H unlimited
 sed -e '/cpython/d'               -i ../gcc/testsuite/gcc.dg/plugin/plugin.exp
-sed -e 's/no-pic /&-no-pie /'     -i ../gcc/testsuite/gcc.target/i386/pr113689-1.c
-sed -e 's/300000/(1|300000)/'     -i ../libgomp/testsuite/libgomp.c-c++-common/pr109062.c
-sed -e 's/{ target nonpic } //' \
-    -e '/GOTPCREL/d'              -i ../gcc/testsuite/gcc.target/i386/fentryname3.c
+#sed -e 's/no-pic /&-no-pie /'     -i ../gcc/testsuite/gcc.target/i386/pr113689-1.c
+#sed -e 's/300000/(1|300000)/'     -i ../libgomp/testsuite/libgomp.c-c++-common/pr109062.c
+#sed -e 's/{ target nonpic } //' \
+#    -e '/GOTPCREL/d'              -i ../gcc/testsuite/gcc.target/i386/fentryname3.c
 chown -R tester .
 su tester -c "PATH=$PATH make -k check"

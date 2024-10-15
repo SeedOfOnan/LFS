@@ -28,21 +28,21 @@ cc dummy.c -v -Wl,--verbose &> dummy.log
 readelf -l a.out | grep ': /lib'
 #EXPECT [Requesting program interpreter: /lib/ld-linux-aarch64.so.1]
 grep -E -o '/usr/lib.*/S?crt[1in].*succeeded' dummy.log
-#EXPECT  /usr/lib/gcc/x86_64-pc-linux-gnu/14.2.0/../../../../lib/Scrt1.o succeeded
-#EXPECT  /usr/lib/gcc/x86_64-pc-linux-gnu/14.2.0/../../../../lib/crti.o succeeded
-#EXPECT  /usr/lib/gcc/x86_64-pc-linux-gnu/14.2.0/../../../../lib/crtn.o succeeded
+#EXPECT  /usr/lib/gcc/aarch64-unknown-linux-gnu/14.2.0/../../../../lib/Scrt1.o succeeded
+#EXPECT  /usr/lib/gcc/aarch64-unknown-linux-gnu/14.2.0/../../../../lib/crti.o succeeded
+#EXPECT  /usr/lib/gcc/aarch64-unknown-linux-gnu/14.2.0/../../../../lib/crtn.o succeeded
 grep -B4 '^ /usr/include' dummy.log
 #EXPECT  #include <...> search starts here:
- #EXPECT  /usr/lib/gcc/x86_64-pc-linux-gnu/14.2.0/include
+ #EXPECT  /usr/lib/gcc/aarch64-unknown-linux-gnu/14.2.0/include
  #EXPECT  /usr/local/include
- #EXPECT  /usr/lib/gcc/x86_64-pc-linux-gnu/14.2.0/include-fixed
+ #EXPECT  /usr/lib/gcc/aarch64-unknown-linux-gnu/14.2.0/include-fixed
  #EXPECT  /usr/include
 grep 'SEARCH.*/usr/lib' dummy.log |sed 's|; |\n|g'
-#EXPECT  SEARCH_DIR("/usr/x86_64-pc-linux-gnu/lib64")
+#EXPECT  SEARCH_DIR("/usr/aarch64-unknown-linux-gnu/lib64")
 #EXPECT  SEARCH_DIR("/usr/local/lib64")
 #EXPECT  SEARCH_DIR("/lib64")
 #EXPECT  SEARCH_DIR("/usr/lib64")
-#EXPECT  SEARCH_DIR("/usr/x86_64-pc-linux-gnu/lib")
+#EXPECT  SEARCH_DIR("/usr/aarch64-unknown-linux-gnu/lib")
 #EXPECT  SEARCH_DIR("/usr/local/lib")
 #EXPECT  SEARCH_DIR("/lib")
 #EXPECT  SEARCH_DIR("/usr/lib");

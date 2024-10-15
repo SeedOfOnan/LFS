@@ -262,7 +262,7 @@ tar -xf ../gmp-6.3.0.tar.xz
 mv -v gmp-6.3.0 gmp
 tar -xf ../mpc-1.3.1.tar.gz
 mv -v mpc-1.3.1 mpc
-#sed -e '/m64=/s/lib64/lib/' -i.orig gcc/config/i386/t-linux64 #x86_64
+sed -e '/lp64=/s/lib64/lib/' -i.orig gcc/config/aarch64/t-aarch64-linux #arm_64
 
 #Allow building libgcc and libstdc++ libraries with POSIX threads support
 sed '/thread_header =/s/@.*@/gthr-posix.h/' \
@@ -279,8 +279,6 @@ cd       build
     --prefix=/usr                                  \
     --with-build-sysroot=$LFS                      \
     --enable-default-pie                           \
-  --with-arch=armv8-a       \
-  --with-tune=cortex-a76.cortex-a55 \
     --enable-default-ssp                           \
     --disable-nls                                  \
     --disable-multilib                             \

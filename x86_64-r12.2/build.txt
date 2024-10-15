@@ -161,6 +161,7 @@ sudo chroot "$LFS" /usr/bin/env -i  \
     PATH=/usr/bin:/usr/sbin     \
     LFS_TGT="$LFS_TGT"          \
     MAKEFLAGS="-j$(nproc)"      \
+    TESTSUITEFLAGS="-j$(nproc)" \
     /bin/bash --login
 
 # First, some additional folders, links, and files are stubbed out.

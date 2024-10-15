@@ -25,9 +25,6 @@ rm -r iana-etc-20240912
 # wget https://www.iana.org/time-zones/repository/releases/tzdata2024b.tar.gz
 tar -xf glibc-2.40.tar.xz
 cd glibc-2.40
-# First, fix an issue building Glibc with parallel jobs and make-4.4 or later:
-sed '/MAKEFLAGS :=/s/)r/) -r/' -i Makerules
-
 patch -Np1 -i ../glibc-2.40-fhs-1.patch
 mkdir -v build
 cd       build

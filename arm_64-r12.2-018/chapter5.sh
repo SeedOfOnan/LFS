@@ -56,7 +56,7 @@ mv -v gmp-6.3.0 gmp
 tar -xf ../mpc-1.3.1.tar.gz
 mv -v mpc-1.3.1 mpc
 
-#sed -e '/m64=/s/lib64/lib/' -i.orig gcc/config/i386/t-linux64 #x86_64
+sed -e '/lp64=/s/lib64/lib/' -i.orig gcc/config/aarch64/t-aarch64-linux #arm_64
 
 mkdir -v build
 cd       build
@@ -69,8 +69,6 @@ cd       build
     --with-newlib             \
     --without-headers         \
     --enable-default-pie      \
-  --with-arch=armv8-a       \
-  --with-tune=cortex-a76.cortex-a55 \
     --enable-default-ssp      \
     --disable-nls             \
     --disable-shared          \
@@ -82,9 +80,6 @@ cd       build
     --disable-libssp          \
     --disable-libvtv          \
     --disable-libstdcxx       \
-  --disable-libsanitizer \
-  --disable-cet \
-  --disable-lto \
     --enable-languages=c,c++
 
 make all-gcc all-target-libgcc #was: make
@@ -104,7 +99,10 @@ cd linux-6.11.1
 
 make mrproper
 
-make ARCH=arm64 INSTALL_HDR_PATH=$LFS/usr headers_install
+make headers
+find usr/include -type f ! -name '*.h' -delete
+cp -rv usr/include $LFS/usr
+#make ARCH=arm64 INSTALL_HDR_PATH=$LFS/usr headers_install
 
 cd ..
 rm -r linux-6.11.1
@@ -120,9 +118,6 @@ cd glibc-2.40
 #mkdir -v $LFS/lib64 #x86_64
 #ln -sfv ../lib/ld-linux-x86-64.so.2 $LFS/lib64 #x86_64
 #ln -sfv ../lib/ld-linux-x86-64.so.2 $LFS/lib64/ld-lsb-x86-64.so.3 #x86_64
-
-# Fix an issue building Glibc with parallel jobs and make-4.4 or later:
-sed '/MAKEFLAGS :=/s/)r/) -r/' -i Makerules
 
 patch -Np1 -i ../glibc-2.40-fhs-1.patch
 

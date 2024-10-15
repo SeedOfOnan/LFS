@@ -116,9 +116,6 @@ mkdir -v $LFS/lib64 #x86_64
 ln -sfv ../lib/ld-linux-x86-64.so.2 $LFS/lib64 #x86_64
 ln -sfv ../lib/ld-linux-x86-64.so.2 $LFS/lib64/ld-lsb-x86-64.so.3 #x86_64
 
-# Fix an issue building Glibc with parallel jobs and make-4.4 or later:
-sed '/MAKEFLAGS :=/s/)r/) -r/' -i Makerules
-
 patch -Np1 -i ../glibc-2.40-fhs-1.patch
 
 mkdir -v build

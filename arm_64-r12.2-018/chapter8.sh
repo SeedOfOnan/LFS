@@ -25,9 +25,6 @@ rm -r iana-etc-20240912
 # wget https://www.iana.org/time-zones/repository/releases/tzdata2024b.tar.gz
 tar -xf glibc-2.40.tar.xz
 cd glibc-2.40
-# First, fix an issue building Glibc with parallel jobs and make-4.4 or later:
-sed '/MAKEFLAGS :=/s/)r/) -r/' -i Makerules
-
 patch -Np1 -i ../glibc-2.40-fhs-1.patch
 mkdir -v build
 cd       build
@@ -47,7 +44,7 @@ sed '/test-installation/s@$(PERL)@echo not running@' -i ../Makefile
 make install
 sed '/RTLDLIST=/s@/usr@@g' -i /usr/bin/ldd
 
-localedef -i POSIX -f UTF-8 C.UTF-8 2> /dev/null || true
+localedef -i C -f UTF-8 C.UTF-8
 localedef -i cs_CZ -f UTF-8 cs_CZ.UTF-8
 localedef -i de_DE -f ISO-8859-1 de_DE
 localedef -i de_DE@euro -f ISO-8859-15 de_DE@euro
@@ -87,7 +84,7 @@ localedef -i zh_TW -f UTF-8 zh_TW.UTF-8
 #make localedata/install-locales
 
 # The following two locales are needed for some tests later in this chapter:
-#localedef -i POSIX -f UTF-8 C.UTF-8 2> /dev/null || true
+#localedef -i C -f UTF-8 C.UTF-8
 #localedef -i ja_JP -f SHIFT_JIS ja_JP.SJIS 2> /dev/null || true
 
 # 8.5.2. Configuring Glibc
@@ -544,16 +541,14 @@ rm -r shadow-4.16.0
 # 8.29. GCC-14.2.0
 tar -xf gcc-14.2.0.tar.xz
 cd gcc-14.2.0
-#sed -e '/m64=/s/lib64/lib/' \
-#    -i.orig gcc/config/i386/t-linux64 #x86_64
+sed -e '/lp64=/s/lib64/lib/' \
+    -i.orig gcc/config/aarch64/t-aarch64-linux #arm_64
 mkdir -v build
 cd       build
 ../configure --prefix=/usr            \
              LD=ld                    \
              --enable-languages=c,c++ \
              --enable-default-pie     \
-  --with-arch=armv8-a       \
-  --with-tune=cortex-a76.cortex-a55 \
              --enable-default-ssp     \
              --enable-host-pie        \
              --disable-multilib       \
@@ -563,10 +558,10 @@ cd       build
 make
 ulimit -s -H unlimited
 sed -e '/cpython/d'               -i ../gcc/testsuite/gcc.dg/plugin/plugin.exp
-sed -e 's/no-pic /&-no-pie /'     -i ../gcc/testsuite/gcc.target/i386/pr113689-1.c
-sed -e 's/300000/(1|300000)/'     -i ../libgomp/testsuite/libgomp.c-c++-common/pr109062.c
-sed -e 's/{ target nonpic } //' \
-    -e '/GOTPCREL/d'              -i ../gcc/testsuite/gcc.target/i386/fentryname3.c
+#sed -e 's/no-pic /&-no-pie /'     -i ../gcc/testsuite/gcc.target/i386/pr113689-1.c
+#sed -e 's/300000/(1|300000)/'     -i ../libgomp/testsuite/libgomp.c-c++-common/pr109062.c
+#sed -e 's/{ target nonpic } //' \
+#    -e '/GOTPCREL/d'              -i ../gcc/testsuite/gcc.target/i386/fentryname3.c
 chown -R tester .
 set +x
 su tester -c "PATH=$PATH make -k check"
@@ -595,21 +590,21 @@ cc dummy.c -v -Wl,--verbose &> dummy.log
 readelf -l a.out | grep ': /lib'
 #EXPECT [Requesting program interpreter: /lib/ld-linux-aarch64.so.1]
 grep -E -o '/usr/lib.*/S?crt[1in].*succeeded' dummy.log
-#EXPECT  /usr/lib/gcc/x86_64-pc-linux-gnu/14.2.0/../../../../lib/Scrt1.o succeeded
-#EXPECT  /usr/lib/gcc/x86_64-pc-linux-gnu/14.2.0/../../../../lib/crti.o succeeded
-#EXPECT  /usr/lib/gcc/x86_64-pc-linux-gnu/14.2.0/../../../../lib/crtn.o succeeded
+#EXPECT  /usr/lib/gcc/aarch64-unknown-linux-gnu/14.2.0/../../../../lib/Scrt1.o succeeded
+#EXPECT  /usr/lib/gcc/aarch64-unknown-linux-gnu/14.2.0/../../../../lib/crti.o succeeded
+#EXPECT  /usr/lib/gcc/aarch64-unknown-linux-gnu/14.2.0/../../../../lib/crtn.o succeeded
 grep -B4 '^ /usr/include' dummy.log
 #EXPECT  #include <...> search starts here:
- #EXPECT  /usr/lib/gcc/x86_64-pc-linux-gnu/14.2.0/include
+ #EXPECT  /usr/lib/gcc/aarch64-unknown-linux-gnu/14.2.0/include
  #EXPECT  /usr/local/include
- #EXPECT  /usr/lib/gcc/x86_64-pc-linux-gnu/14.2.0/include-fixed
+ #EXPECT  /usr/lib/gcc/aarch64-unknown-linux-gnu/14.2.0/include-fixed
  #EXPECT  /usr/include
 grep 'SEARCH.*/usr/lib' dummy.log |sed 's|; |\n|g'
-#EXPECT  SEARCH_DIR("/usr/x86_64-pc-linux-gnu/lib64")
+#EXPECT  SEARCH_DIR("/usr/aarch64-unknown-linux-gnu/lib64")
 #EXPECT  SEARCH_DIR("/usr/local/lib64")
 #EXPECT  SEARCH_DIR("/lib64")
 #EXPECT  SEARCH_DIR("/usr/lib64")
-#EXPECT  SEARCH_DIR("/usr/x86_64-pc-linux-gnu/lib")
+#EXPECT  SEARCH_DIR("/usr/aarch64-unknown-linux-gnu/lib")
 #EXPECT  SEARCH_DIR("/usr/local/lib")
 #EXPECT  SEARCH_DIR("/lib")
 #EXPECT  SEARCH_DIR("/usr/lib");
@@ -1153,7 +1148,7 @@ rm -r groff-1.23.0
 #make install
 #mv -v /etc/bash_completion.d/grub /usr/share/bash-completion/completions
 #cd ..
-#rm -r grub-2.06
+#rm -r grub-2.12
 
 # 8.65. Gzip-1.13
 tar -xf gzip-1.13.tar.xz

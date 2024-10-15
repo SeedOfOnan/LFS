@@ -25,9 +25,6 @@ rm -r iana-etc-20240912
 # wget https://www.iana.org/time-zones/repository/releases/tzdata2024b.tar.gz
 tar -xf glibc-2.40.tar.xz
 cd glibc-2.40
-# First, fix an issue building Glibc with parallel jobs and make-4.4 or later:
-sed '/MAKEFLAGS :=/s/)r/) -r/' -i Makerules
-
 patch -Np1 -i ../glibc-2.40-fhs-1.patch
 mkdir -v build
 cd       build
@@ -47,7 +44,7 @@ sed '/test-installation/s@$(PERL)@echo not running@' -i ../Makefile
 make install
 sed '/RTLDLIST=/s@/usr@@g' -i /usr/bin/ldd
 
-localedef -i POSIX -f UTF-8 C.UTF-8 2> /dev/null || true
+localedef -i C -f UTF-8 C.UTF-8
 localedef -i cs_CZ -f UTF-8 cs_CZ.UTF-8
 localedef -i de_DE -f ISO-8859-1 de_DE
 localedef -i de_DE@euro -f ISO-8859-15 de_DE@euro
@@ -87,7 +84,7 @@ localedef -i zh_TW -f UTF-8 zh_TW.UTF-8
 #make localedata/install-locales
 
 # The following two locales are needed for some tests later in this chapter:
-#localedef -i POSIX -f UTF-8 C.UTF-8 2> /dev/null || true
+#localedef -i C -f UTF-8 C.UTF-8
 #localedef -i ja_JP -f SHIFT_JIS ja_JP.SJIS 2> /dev/null || true
 
 # 8.5.2. Configuring Glibc

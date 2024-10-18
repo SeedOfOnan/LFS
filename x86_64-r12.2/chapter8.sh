@@ -1148,7 +1148,7 @@ rm -r groff-1.23.0
 #make install
 #mv -v /etc/bash_completion.d/grub /usr/share/bash-completion/completions
 #cd ..
-#rm -r grub-2.06
+#rm -r grub-2.12
 
 # 8.65. Gzip-1.13
 tar -xf gzip-1.13.tar.xz

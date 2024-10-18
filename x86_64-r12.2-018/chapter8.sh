@@ -986,7 +986,7 @@ install -v -dm755 /usr/share/doc/python-3.12.7/html
 
 tar --no-same-owner \
     -xvf ../python-3.12.7-docs-html.tar.bz2
-cp -R --no-preserve=mode python-3.12.7-docs-html/* \
+cp -R --no-preserve=mode python-3.12-docs-html/* \
     /usr/share/doc/python-3.12.7/html
 cd ..
 rm -r Python-3.12.7
@@ -1148,7 +1148,7 @@ rm -r groff-1.23.0
 #make install
 #mv -v /etc/bash_completion.d/grub /usr/share/bash-completion/completions
 #cd ..
-#rm -r grub-2.06
+#rm -r grub-2.12
 
 # 8.65. Gzip-1.13
 tar -xf gzip-1.13.tar.xz

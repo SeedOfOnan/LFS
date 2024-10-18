@@ -288,6 +288,8 @@ rm -r tcl8.6.15
 # wget https://www.linuxfromscratch.org/patches/lfs/development/expect-5.45.4-gcc14-1.patch
 tar -xf expect5.45.4.tar.gz
 cd expect5.45.4
+tar -C tclconfig -xf ../autoconf-2.72.tar.xz --strip-components=2 \
+    autoconf-2.72/build-aux/config.{guess,sub} #arm_64
 patch -Np1 -i ../expect-5.45.4-gcc14-1.patch
 ./configure --prefix=/usr           \
             --with-tcl=/usr/lib     \
